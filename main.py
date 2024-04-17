@@ -8,7 +8,7 @@ datastore_client = datastore.Client()
 
 @app.route('/')
 def index():
-    return 'Hello world!'
+    return 'Assignment 2 - Robert Cosentino - cosentir@oregonstate.edu'
 
 # -----------------------------------------------------------------------------------------------
 # CREATE new business
@@ -23,7 +23,7 @@ def create_business():
 
     # Checking if the request is missing any required fields
     if not all(field in business_data for field in required_fields):
-        return jsonify(error="Request Missing at least one or more required field attributes"), 400
+        return jsonify({"Error": "The request body is missing at least one of the required attributes"}), 400
     
     # Creating a new business entity for datastore
     new_business = datastore.Entity(key=datastore_client.key('Business'))
@@ -44,7 +44,7 @@ def get_business(business_id):
     try:
         business_id = int(business_id)
     except ValueError:
-        return jsonify(error="Invalid Business ID"), 400
+        return jsonify({"Error": "No business with this business_id exists"}), 404
     
     # Fetching the business entity from datastore
     key = datastore_client.key('Business', business_id)
@@ -52,7 +52,7 @@ def get_business(business_id):
 
     # Checking if the business entity exists
     if not business:
-        return jsonify(error="Business Not in Database"), 404
+        return jsonify({"Error": "No business with this business_id exists"}), 404
     
     business_data = dict(business)
     business_data['id'] = business.id
@@ -89,16 +89,16 @@ def get_businesses_by_owner(owner_id):
     try:
         owner_id = int(owner_id)
     except ValueError:
-        return jsonify(error="Invalid Owner ID"), 400
+        return jsonify({"Error": "Invalid Owner ID"}), 400
     
     # Query to fetch all businesses owned by the owner_id
     query = datastore_client.query(kind='Business')
     query.add_filter('owner_id', '=', owner_id)
-    businesses = list(query.fetch())
+    results = list(query.fetch())
 
     # Conversion of Datastore entities to dictionaries
     businesses = []
-    for business in businesses:
+    for business in results:
         business_data = dict(business)
         business_data['id'] = business.id
         businesses.append(business_data)
@@ -121,13 +121,13 @@ def edit_business(business_id):
 
     # Check if the request is missing any required fields
     if not all(field in business_data for field in required_fields):
-        return jsonify(error="Request Missing at least one or more required field attributes"), 400
+        return jsonify({"Error": "The request body is missing at least one of the required attributes"}), 400
 
     # Converting id into int if possible
     try:
         business_id = int(business_id)
     except ValueError:
-        return jsonify(error="Invalid Business ID"), 400
+        return jsonify({"Error": "Invalid Business ID"}), 400
     
     # Fetch the business entity from Datastore
     key = datastore_client.key('Business', business_id)
@@ -135,7 +135,7 @@ def edit_business(business_id):
 
     # Check if business exists:
     if not business:
-        return jsonify(error="Business Not in Database"), 404
+        return jsonify({"Error": "No business with this business_id exists"}), 404
     
     # Updating entity with newly acquired data 
     business.update(business_data)
@@ -158,7 +158,7 @@ def delete_business(business_id):
     try:
         business_id = int(business_id)
     except ValueError:
-        return jsonify(error="Invalid business ID"), 404
+        return jsonify({"Error": "Invalid business ID"}), 404
     
     # Retrieivng business entity from Datastore to be deleted
     business_key = datastore_client.key('Business', business_id)
@@ -166,7 +166,7 @@ def delete_business(business_id):
 
     # check if business exists
     if not business:
-        return jsonify(error="No business with this ID exists in the Database"), 404
+        return jsonify({"Error": "No business with this business_id exists"}), 404
     
     # Query to delete all reviews associated with the business
     query = datastore_client.query(kind='Review')
@@ -195,12 +195,12 @@ def create_review():
 
     # Check if all required fields are provided
     if not all(field in review_data for field in required_fields):
-        return jsonify(error="The request is missing one or more of the required attributes"), 400
+        return jsonify({"Error": "The request body is missing at least one of the required attributes"}), 400
 
     # Check if the business exists
     business_key = datastore_client.key('Business', review_data['business_id'])
     if not datastore_client.get(business_key):
-        return jsonify(error="The business does not exist"), 404
+        return jsonify({"Error": "No business with this business_id exists"}), 404
 
     # Check for an existing review
     query = datastore_client.query(kind='Review')
@@ -209,7 +209,7 @@ def create_review():
     existing_reviews = list(query.fetch())
 
     if existing_reviews:
-        return jsonify(error="Review already exists for this user and business"), 409
+        return jsonify({"Error": "You have already submitted a review for this business. You can update your previous review, or delete it and submit a new review"}), 409
 
     # Since no review exists, create a new one with an auto-generated ID
     new_review = datastore.Entity(key=datastore_client.key('Review'))
@@ -231,7 +231,7 @@ def get_review(review_id):
     try:
         review_id = int(review_id)
     except ValueError:
-        return jsonify(error="Review ID Not Valid"), 400
+        return jsonify({"Error": "Review ID Not Valid"}), 400
     
     # Retrieving Review entity from Datastore
     review_key = datastore_client.key('Review', review_id)
@@ -239,7 +239,7 @@ def get_review(review_id):
 
     # Check if the review exists
     if not review:
-        return jsonify(error="No review with this review_id exists"), 404
+        return jsonify({"Error": "No review with this review_id exists"}), 404
     
     # Converting Datastore entity to dictionary to return as JSON
     review_data = dict(review)
@@ -255,18 +255,18 @@ def edit_review(review_id):
     try:
         review_id = int(review_id)
     except ValueError:
-        return jsonify(error="Review ID Not Valid"), 400
+        return jsonify({"Error": "Review ID Not Valid"}), 400
     
     review_updates = request.get_json()
 
     if 'stars' not in review_updates:
-        return jsonify(error="Request Missing 'stars' attribute"), 400
+        return jsonify({"Error": "The request body is missing at least one of the required attributes"}), 400
     
     review_key = datastore_client.key('Review', review_id)
     review = datastore_client.get(review_key)
 
     if not review:
-        return jsonify(error="No review with this ID exists"), 404
+        return jsonify({"Error": "No review with this review_id exists"}), 404
     
     review.update(review_updates)
 
@@ -286,7 +286,7 @@ def delete_review(review_id):
     try:
         review_id = int(review_id)
     except ValueError:
-        return jsonify(error="No Review with provided ID exists"), 404
+        return jsonify({"Error": "No review with this review_id exists"}), 404
     
     # Creating Review Key
     review_key = datastore_client.key('Review', review_id)
@@ -295,7 +295,7 @@ def delete_review(review_id):
     review = datastore_client.get(review_key)
 
     if not review:
-        return jsonify(error="No Review with provided ID exists"), 404
+        return jsonify({"Error": "No review with this review_id exists"}), 404
     
     datastore_client.delete(review_key)
 
@@ -311,7 +311,7 @@ def list_reviews_for_user(user_id):
     try:
         user_id = int(user_id)
     except ValueError:
-        return jsonify(error="Invalid User ID format"), 400
+        return jsonify({"Error": "Invalid User ID format"}), 400
     
 
     # Datastore Query to select al reviews of specified user
